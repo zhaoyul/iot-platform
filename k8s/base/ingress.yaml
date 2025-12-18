@@ -1,0 +1,55 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: iot-platform-ingress
+  namespace: iot-platform
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "500m"
+spec:
+  tls:
+  - hosts:
+    - git.iot-platform.com
+    - api.iot-platform.com
+    - viz.iot-platform.com
+    secretName: iot-platform-tls
+  rules:
+  - host: git.iot-platform.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: gitea
+            port:
+              number: 3000
+  - host: api.iot-platform.com
+    http:
+      paths:
+      - path: /git
+        pathType: Prefix
+        backend:
+          service:
+            name: git-parser
+            port:
+              number: 8080
+      - path: /assets
+        pathType: Prefix
+        backend:
+          service:
+            name: asset-manager
+            port:
+              number: 8082
+  - host: viz.iot-platform.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: visualization-frontend
+            port:
+              number: 80

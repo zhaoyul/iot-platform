@@ -1,0 +1,88 @@
+# Ignore build artifacts
+*.o
+*.so
+*.dylib
+*.exe
+*.dll
+*.test
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore dependency directories
+node_modules/
+vendor/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+
+# Ignore build directories
+build/
+dist/
+*.egg-info/
+.cache/
+.pytest_cache/
+
+# Ignore log files
+*.log
+logs/
+
+# Ignore environment files
+.env
+.env.local
+.env.*.local
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+
+# Ignore coverage reports
+coverage/
+*.cover
+.coverage
+htmlcov/
+
+# Ignore compiled frontend assets
+frontend/build/
+frontend/.next/
+frontend/out/
+
+# Ignore Docker volumes data
+postgres-data/
+redis-data/
+gitea-data/
+minio-data/
+
+# Ignore certificates
+*.pem
+*.key
+*.crt
+*.p12
+
+# Ignore secrets
+secrets/
+*.secret
+
+# Ignore backup files
+backup/
+*.backup
+*.sql.gz
+
+# Keep example files
+!examples/**

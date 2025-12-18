@@ -1,0 +1,197 @@
+version: '3.8'
+
+services:
+  # Gitea - Git服务核心
+  gitea:
+    image: gitea/gitea:1.21
+    container_name: iot-gitea
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=postgres:5432
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=gitea
+      - GITEA__database__PASSWD=gitea_password
+      - GITEA__server__DOMAIN=localhost
+      - GITEA__server__HTTP_PORT=3000
+      - GITEA__server__ROOT_URL=http://localhost:3000
+      - GITEA__security__INSTALL_LOCK=true
+      - GITEA__service__DISABLE_REGISTRATION=false
+      - GITEA__webhook__ALLOWED_HOST_LIST=*
+    restart: always
+    networks:
+      - iot-network
+    volumes:
+      - gitea-data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    depends_on:
+      - postgres
+      - redis
+
+  # PostgreSQL数据库
+  postgres:
+    image: postgres:14-alpine
+    container_name: iot-postgres
+    environment:
+      - POSTGRES_USER=gitea
+      - POSTGRES_PASSWORD=gitea_password
+      - POSTGRES_DB=gitea
+    restart: always
+    networks:
+      - iot-network
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: iot-redis
+    restart: always
+    networks:
+      - iot-network
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+
+  # Git解析服务
+  git-parser:
+    build:
+      context: ./services/git-parser
+      dockerfile: Dockerfile
+    container_name: iot-git-parser
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://gitea:gitea_password@postgres:5432/gitea
+    restart: always
+    networks:
+      - iot-network
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - gitea-data:/repositories:ro
+
+  # 可视化前端服务
+  visualization-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: iot-viz-frontend
+    restart: always
+    networks:
+      - iot-network
+    ports:
+      - "8081:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8080
+      - REACT_APP_GITEA_URL=http://localhost:3000
+
+  # 资产管理服务
+  asset-manager:
+    build:
+      context: ./services/asset-manager
+      dockerfile: Dockerfile
+    container_name: iot-asset-manager
+    environment:
+      - DATABASE_URL=postgresql://gitea:gitea_password@postgres:5432/gitea
+      - REDIS_URL=redis://redis:6379
+      - STORAGE_PATH=/assets
+    restart: always
+    networks:
+      - iot-network
+    ports:
+      - "8082:8082"
+    volumes:
+      - asset-storage:/assets
+    depends_on:
+      - postgres
+      - redis
+
+  # Oxidized网络设备配置备份
+  oxidized:
+    image: oxidized/oxidized:latest
+    container_name: iot-oxidized
+    restart: always
+    networks:
+      - iot-network
+    volumes:
+      - oxidized-config:/home/oxidized/.config/oxidized
+      - oxidized-data:/home/oxidized/oxidized
+    ports:
+      - "8888:8888"
+
+  # MinIO对象存储（用于大型二进制文件）
+  minio:
+    image: minio/minio:latest
+    container_name: iot-minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin123
+    restart: always
+    networks:
+      - iot-network
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  # Prometheus监控
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: iot-prometheus
+    restart: always
+    networks:
+      - iot-network
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+
+  # Grafana可视化
+  grafana:
+    image: grafana/grafana:latest
+    container_name: iot-grafana
+    restart: always
+    networks:
+      - iot-network
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_INSTALL_PLUGINS=redis-datasource
+
+networks:
+  iot-network:
+    driver: bridge
+
+volumes:
+  gitea-data:
+  postgres-data:
+  redis-data:
+  asset-storage:
+  oxidized-config:
+  oxidized-data:
+  minio-data:
+  prometheus-data:
+  grafana-data:
