@@ -1,0 +1,27 @@
+{:paths ["src" "resources"]
+ 
+ :deps {org.clojure/clojure {:mvn/version "1.11.1"}
+        org.clojure/clojurescript {:mvn/version "1.11.132"}
+        
+        ;; React wrapper
+        reagent/reagent {:mvn/version "1.2.0"}
+        
+        ;; Routing
+        metosin/reitit-frontend {:mvn/version "0.7.0-alpha7"}
+        
+        ;; HTTP client
+        cljs-ajax/cljs-ajax {:mvn/version "0.8.4"}
+        
+        ;; State management
+        re-frame/re-frame {:mvn/version "1.4.2"}
+        
+        ;; Utils
+        camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.3"}}
+ 
+ :aliases
+ {:dev {:extra-deps {thheller/shadow-cljs {:mvn/version "2.26.2"}
+                     binaryage/devtools {:mvn/version "1.0.7"}}}
+  
+  :build {:extra-deps {thheller/shadow-cljs {:mvn/version "2.26.2"}}
+          :exec-fn shadow.cljs.devtools.cli/release
+          :exec-args {:build-id :app}}}}
