@@ -1,0 +1,10 @@
+{:port 8080
+ 
+ :database {:host #or [#env DATABASE_HOST "postgres"]
+            :port #or [#env DATABASE_PORT 5432]
+            :name #or [#env DATABASE_NAME "gitea"]
+            :user #or [#env DATABASE_USER "gitea"]
+            :password #or [#env DATABASE_PASSWORD "gitea_password"]}
+ 
+ :redis {:host #or [#env REDIS_HOST "redis"]
+         :port #or [#env REDIS_PORT 6379]}}

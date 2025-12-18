@@ -3,47 +3,56 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Ready-brightgreen.svg)](docker-compose.yml)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-blue.svg)](k8s/)
+[![Clojure](https://img.shields.io/badge/Clojure-1.11-blue.svg)](https://clojure.org/)
 
 ## 概述
 
-IoT Platform 是一个基于开源生态构建的下一代Git集成管理平台，专为工业DevOps场景设计。它不仅能管理传统文本代码，还能深度解析和渲染复杂工业逻辑（PLC程序）、二进制资产及自动化工作流，为追求数据主权、成本控制及高度定制化的组织提供完整的解决方案。
+IoT Platform 是一个基于 **Clojure/ClojureScript** 生态构建的下一代Git集成管理平台，专为工业DevOps场景设计。采用函数式编程范式，实现了传统代码、PLC程序、EDA设计文件、固件等多种资产的统一管理，为追求数据主权、成本控制及高度定制化的组织提供完整的解决方案。
+
+### 技术栈
+
+- **后端**: Clojure + Ring + Reitit + next.jdbc + clj-jgit
+- **前端**: ClojureScript + Reagent + Re-frame + Shadow-cljs
+- **数据库**: PostgreSQL + Redis
+- **Git服务**: Gitea
+- **监控**: Prometheus + Grafana
 
 ### 核心特性
 
 🚀 **统一资产管理**
 - 支持传统代码、PLC程序、EDA设计文件、固件等多种资产类型
 - 基于Git的版本控制，支持大型二进制文件（Git LFS）
-- 智能资产分类和检索
+- 函数式数据处理，不可变数据结构保证一致性
 
 🔍 **深度代码分析**
-- 基于AST的语义级差异分析
-- 依赖关系可视化（React Flow）
-- PLC梯形图和功能块图渲染
+- Clojure函数式解析引擎
+- 依赖关系可视化
+- PLC梯形图渲染（SVG/Canvas）
 - EDA原理图差异对比
 
 🏭 **工业自动化支持**
 - PLC程序解析（IEC 61131-3标准）
 - 网络设备配置管理（Oxidized集成）
-- 自动化CI/CD流水线
+- 自动化CI/CD流水线（core.async）
 - 设备配置版本追踪
 
 📊 **强大的可视化**
-- 交互式依赖图（React Flow）
-- 系统架构图（JointJS）
-- PLC逻辑流程可视化
-- 实时监控仪表板（Grafana）
+- Reagent交互式组件
+- SVG原生图形渲染
+- 实时状态管理（Re-frame）
+- 监控仪表板（Grafana）
 
 🔒 **企业级安全**
-- 多因素认证（LDAP/SAML/本地）
+- JWT认证（buddy库）
 - 细粒度权限控制（RBAC）
 - 完整的审计日志
 - 数据主权保障
 
-⚡ **高性能架构**
-- 微服务架构，支持水平扩展
-- Redis缓存加速
-- 异步任务处理（Celery）
-- Kubernetes原生支持
+⚡ **函数式架构优势**
+- 不可变数据结构，并发安全
+- 纯函数，易于测试
+- REPL驱动开发
+- 前后端代码共享
 
 ## 快速开始
 

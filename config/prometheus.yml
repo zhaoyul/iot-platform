@@ -12,14 +12,9 @@ scrape_configs:
       - targets: ['gitea:3000']
     metrics_path: /metrics
 
-  - job_name: 'git-parser'
+  - job_name: 'backend'
     static_configs:
-      - targets: ['git-parser:8080']
-    metrics_path: /metrics
-
-  - job_name: 'asset-manager'
-    static_configs:
-      - targets: ['asset-manager:8082']
+      - targets: ['backend:8080']
     metrics_path: /metrics
 
   - job_name: 'postgres'

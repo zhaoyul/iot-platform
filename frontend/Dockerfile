@@ -1,25 +1,30 @@
-# Frontend - Dockerfile
 FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# 复制package文件
-COPY package*.json ./
-RUN npm ci
+# Install Java for ClojureScript compilation
+RUN apk add --no-cache openjdk17
 
-# 复制源代码
-COPY . .
+# Copy deps.edn and shadow-cljs.edn
+COPY deps.edn shadow-cljs.edn ./
 
-# 构建应用
-RUN npm run build
+# Install shadow-cljs globally
+RUN npm install -g shadow-cljs
 
-# 生产阶段
+# Copy source code
+COPY src ./src
+COPY resources ./resources
+
+# Build ClojureScript
+RUN shadow-cljs release app
+
+# Production stage with Nginx
 FROM nginx:alpine
 
-# 复制构建产物
-COPY --from=builder /app/build /usr/share/nginx/html
+# Copy built assets
+COPY --from=builder /app/resources/public /usr/share/nginx/html
 
-# 复制nginx配置
+# Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

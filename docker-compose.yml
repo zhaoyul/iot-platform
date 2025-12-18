@@ -61,15 +61,20 @@ services:
     ports:
       - "6379:6379"
 
-  # Git解析服务
-  git-parser:
+  # Clojure后端服务
+  backend:
     build:
-      context: ./services/git-parser
+      context: ./backend
       dockerfile: Dockerfile
-    container_name: iot-git-parser
+    container_name: iot-backend
     environment:
-      - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=postgresql://gitea:gitea_password@postgres:5432/gitea
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=gitea
+      - DATABASE_USER=gitea
+      - DATABASE_PASSWORD=gitea_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     restart: always
     networks:
       - iot-network
@@ -80,42 +85,21 @@ services:
       - postgres
     volumes:
       - gitea-data:/repositories:ro
+      - asset-storage:/assets
 
-  # 可视化前端服务
-  visualization-frontend:
+  # ClojureScript前端服务
+  frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: iot-viz-frontend
+    container_name: iot-frontend
     restart: always
     networks:
       - iot-network
     ports:
       - "8081:80"
-    environment:
-      - REACT_APP_API_URL=http://localhost:8080
-      - REACT_APP_GITEA_URL=http://localhost:3000
-
-  # 资产管理服务
-  asset-manager:
-    build:
-      context: ./services/asset-manager
-      dockerfile: Dockerfile
-    container_name: iot-asset-manager
-    environment:
-      - DATABASE_URL=postgresql://gitea:gitea_password@postgres:5432/gitea
-      - REDIS_URL=redis://redis:6379
-      - STORAGE_PATH=/assets
-    restart: always
-    networks:
-      - iot-network
-    ports:
-      - "8082:8082"
-    volumes:
-      - asset-storage:/assets
     depends_on:
-      - postgres
-      - redis
+      - backend
 
   # Oxidized网络设备配置备份
   oxidized:
