@@ -16,7 +16,7 @@ metadata:
   name: gitea
   namespace: iot-platform
 spec:
-  replicas: 2
+  replicas: 1  # For multi-replica setup, configure shared storage and session management
   selector:
     matchLabels:
       app: gitea

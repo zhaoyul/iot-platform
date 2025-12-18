@@ -212,5 +212,7 @@ func main() {
 	r.Get("/api/v1/repos/{repo}/diff", service.AnalyzeDiff)
 
 	log.Println("Git Parser Service starting on :8080")
-	http.ListenAndServe(":8080", r)
+	if err := http.ListenAndServe(":8080", r); err != nil {
+		log.Fatalf("Server failed to start: %v", err)
+	}
 }

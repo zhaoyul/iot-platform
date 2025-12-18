@@ -89,9 +89,15 @@ class AssetManager:
         type_path = os.path.join(self.storage_path, asset_type.value)
         os.makedirs(type_path, exist_ok=True)
         
-        # 生成唯一文件名
+        # 生成唯一文件名（安全：防止路径遍历攻击）
+        import re
+        import uuid
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{timestamp}_{file.filename}"
+        # 清理文件名，只保留安全字符
+        safe_filename = re.sub(r'[^a-zA-Z0-9._-]', '_', file.filename or 'upload')
+        # 添加唯一ID确保唯一性
+        unique_id = str(uuid.uuid4())[:8]
+        filename = f"{timestamp}_{unique_id}_{safe_filename}"
         file_path = os.path.join(type_path, filename)
         
         # 保存文件
