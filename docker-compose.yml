@@ -1,0 +1,148 @@
+version: '3.8'
+
+services:
+  # Forgejo - Open source Git platform with community governance
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:1.21
+    container_name: forgejo
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - FORGEJO__database__DB_TYPE=postgres
+      - FORGEJO__database__HOST=db:5432
+      - FORGEJO__database__NAME=forgejo
+      - FORGEJO__database__USER=forgejo
+      - FORGEJO__database__PASSWD=forgejo
+    restart: always
+    networks:
+      - forgejo
+    volumes:
+      - ./data/forgejo:/data
+      - ./config/forgejo/app.ini:/data/gitea/conf/app.ini
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3000:3000"
+      - "222:22"
+    depends_on:
+      - db
+      - minio
+
+  # PostgreSQL - High-performance database backend
+  db:
+    image: postgres:15-alpine
+    container_name: forgejo-db
+    restart: always
+    environment:
+      - POSTGRES_USER=forgejo
+      - POSTGRES_PASSWORD=forgejo
+      - POSTGRES_DB=forgejo
+    networks:
+      - forgejo
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forgejo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO - S3-compatible object storage for Git LFS
+  minio:
+    image: minio/minio:latest
+    container_name: forgejo-minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    networks:
+      - forgejo
+    volumes:
+      - ./data/minio:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Keycloak - Open source identity and access management
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: forgejo-keycloak
+    restart: always
+    command: start-dev
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://db:5432/keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=keycloak
+    networks:
+      - forgejo
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+  # Oxidized - Network device configuration backup
+  oxidized:
+    image: oxidized/oxidized:latest
+    container_name: oxidized
+    restart: always
+    networks:
+      - forgejo
+    volumes:
+      - ./config/oxidized:/root/.config/oxidized
+      - ./data/oxidized:/root/.config/oxidized/configs
+    ports:
+      - "8888:8888"
+
+  # Elasticsearch - Log aggregation and analysis
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: forgejo-elasticsearch
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    networks:
+      - forgejo
+    volumes:
+      - ./data/elasticsearch:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+
+  # Logstash - Log processing pipeline
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: forgejo-logstash
+    restart: always
+    volumes:
+      - ./config/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    networks:
+      - forgejo
+    depends_on:
+      - elasticsearch
+    ports:
+      - "5000:5000"
+
+  # Trivy - Vulnerability scanner for dependencies
+  trivy:
+    image: aquasec/trivy:latest
+    container_name: forgejo-trivy
+    restart: "no"
+    command: server --listen 0.0.0.0:8081
+    networks:
+      - forgejo
+    ports:
+      - "8081:8081"
+
+networks:
+  forgejo:
+    driver: bridge

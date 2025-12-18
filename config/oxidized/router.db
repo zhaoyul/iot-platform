@@ -1,0 +1,12 @@
+# Example router database for Oxidized
+# Format: hostname:model:username:password:enable_password
+
+# Network devices
+core-switch-01:ios:admin:password:
+edge-router-01:junos:admin:password:
+
+# Industrial PLCs with network access
+plc-line-1:codesys:admin:password:
+plc-line-2:siemens-s7:admin:password:
+
+# Add your devices here following the format above
