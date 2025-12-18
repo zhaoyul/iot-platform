@@ -1,0 +1,77 @@
+---
+# Oxidized Configuration for Network and PLC Device Backup
+# Automatically backs up device configurations to Git
+
+username: admin
+password: admin
+model: junos
+interval: 3600
+use_syslog: false
+debug: false
+threads: 30
+timeout: 20
+retries: 3
+prompt: !ruby/regexp /^([\w.@-]+[#>]\s?)$/
+next_adds_job: false
+
+# Crash handling
+crash:
+  directory: /root/.config/oxidized/crashes
+  hostnames: false
+
+# Git repository output
+output:
+  default: git
+  git:
+    user: Oxidized
+    email: oxidized@localhost
+    repo: /root/.config/oxidized/configs/git-repo
+    single_repo: true
+
+# Device source - can be CSV, SQL, HTTP API, etc.
+source:
+  default: csv
+  csv:
+    file: /root/.config/oxidized/router.db
+    delimiter: !ruby/regexp /:/
+    map:
+      name: 0
+      model: 1
+      username: 2
+      password: 3
+    vars_map:
+      enable: 4
+
+# REST API for web interface
+rest: 0.0.0.0:8888
+
+# Model definitions
+models:
+  junos:
+    - show configuration | display set
+  ios:
+    - show running-config
+  # Custom model for Codesys-based soft PLCs
+  codesys:
+    - backup create
+    - backup download
+  # Custom model for Siemens S7 PLCs via SSH
+  siemens-s7:
+    - get-project
+    - export-xml
+
+# Groups for organizing devices
+groups:
+  network:
+    - junos
+    - ios
+  plc:
+    - codesys
+    - siemens-s7
+
+# Hooks for custom processing
+hooks:
+  push_to_remote:
+    type: exec
+    events: [post_store]
+    cmd: 'git -C /root/.config/oxidized/configs/git-repo push origin master'

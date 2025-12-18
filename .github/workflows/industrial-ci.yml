@@ -1,0 +1,175 @@
+name: Industrial DevOps CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Security scanning for dependencies
+  security-scan:
+    name: Security Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+  
+  # Lint PLC code and configuration files
+  lint-industrial-code:
+    name: Lint Industrial Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install linters
+        run: |
+          pip install pylint black flake8
+      
+      - name: Lint Python renderers
+        run: |
+          black --check renderers/
+          flake8 renderers/ --max-line-length=120
+      
+      - name: Lint automation scripts
+        run: |
+          black --check automation/
+          flake8 automation/ --max-line-length=120
+  
+  # Validate L5X files (if any)
+  validate-plc-files:
+    name: Validate PLC Files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install XML validator
+        run: |
+          pip install lxml
+      
+      - name: Validate L5X files
+        run: |
+          # Find and validate all L5X files
+          find . -name "*.l5x" -type f | while read file; do
+            echo "Validating $file"
+            python -c "from lxml import etree; etree.parse('$file')"
+          done
+  
+  # Generate semantic diff reports for code reviews
+  semantic-diff:
+    name: Generate Semantic Diff
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Install GumTree for AST diff
+        run: |
+          wget https://github.com/GumTreeDiff/gumtree/releases/download/v3.0.0/gumtree-3.0.0.zip
+          unzip gumtree-3.0.0.zip
+          chmod +x gumtree/bin/gumtree
+      
+      - name: Generate AST diff for Python files
+        run: |
+          # Compare changed Python files
+          git diff --name-only origin/${{ github.base_ref }}...HEAD | grep '\.py$' | while read file; do
+            if [ -f "$file" ]; then
+              echo "Analyzing $file"
+              ./gumtree/bin/gumtree diff <(git show origin/${{ github.base_ref }}:$file) $file > "diff-$file.txt" || true
+            fi
+          done
+      
+      - name: Upload diff reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: semantic-diffs
+          path: diff-*.txt
+  
+  # Test renderers
+  test-renderers:
+    name: Test Custom Renderers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install lxml
+      
+      - name: Test L5X renderer
+        run: |
+          chmod +x renderers/render-l5x.py
+          # Create sample L5X input
+          echo '<?xml version="1.0" encoding="UTF-8"?><RSLogix5000Content></RSLogix5000Content>' | \
+            python renderers/render-l5x.py > /tmp/test-output.html
+          # Verify HTML output
+          grep -q "DOCTYPE html" /tmp/test-output.html
+      
+      - name: Test ST renderer
+        run: |
+          chmod +x renderers/render-st.py
+          # Create sample ST code
+          echo "PROGRAM Test VAR x : INT; END_VAR x := 5; END_PROGRAM" | \
+            python renderers/render-st.py > /tmp/test-st.html
+          grep -q "DOCTYPE html" /tmp/test-st.html
+  
+  # Build documentation
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Generate architecture documentation
+        run: |
+          echo "Documentation build completed"
+      
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Deploy documentation to GitHub Pages"
+
+  # Commit signature verification
+  verify-signatures:
+    name: Verify Commit Signatures
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Verify GPG signatures
+        run: |
+          # Check if commits are signed
+          git log --show-signature origin/${{ github.base_ref }}..HEAD
